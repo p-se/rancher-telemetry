@@ -121,5 +121,5 @@ jobs:
         run: |
           set -ex
           cd telemetry-devel
-          kubectl -n telemetry apply --wait -f manifests/test-telemetry-server.yaml
+          kubectl -n telemetry apply --wait -k manifests/tests
           kubectl -n telemetry wait --for=condition=complete --timeout=600s job/test-telemetry-server
