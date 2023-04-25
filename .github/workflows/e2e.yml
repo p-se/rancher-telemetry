@@ -60,15 +60,10 @@ jobs:
         run: |
           k3d image import -c ${{ env.CLUSTER_NAME }} rancher/telemetry:dev
 
-      - uses: actions/checkout@v3
-        with:
-          repository: p-se/rancher-telemetry-devel
-          path: telemetry-devel
-
       - name: Install Rancher
         run: |
           pip install httpie && \
-            cd telemetry-devel && \
+            cd k8s && \
             source ./start && \
             install-rancher
 
@@ -92,34 +87,52 @@ jobs:
 
       - name: Configure Rancher
         run: |
-          cd telemetry-devel && \
+          cd k8s && \
             source ./start && \
             CLUSTER_IP=$(get-cluster-ip) && \
             init-base "admin"
 
       - name: Install PostgreSQL
         run: |
-          cd telemetry-devel && source ./start && install-postgres-13.2
+          cd k8s && source ./start && install-postgres-13.2
 
       - name: Install Telemetry Server Dev
         run: |
-          cd telemetry-devel && source ./start && install-telemetry-server-dev
+          cd k8s && source ./start && install-telemetry-server-dev
 
       - name: Install Telemetry Client Dev
         run: |
-          cd telemetry-devel && source ./start && install-telemetry-client-dev
+          cd k8s && source ./start && install-telemetry-client-dev
 
       - name: Install InfluxDB
         run: |
-          cd telemetry-devel && source ./start && install-influx
+          cd k8s && source ./start && install-influx
 
       - name: Install Telemetry Stats
         run: |
-          cd telemetry-devel && source ./start && install-telemetry-stats
+          cd k8s && source ./start && install-telemetry-stats
 
       - name: Test report retrieval from PostgreSQL through Telemetry Server
         run: |
-          set -ex
-          cd telemetry-devel
-          kubectl -n telemetry apply --wait -k manifests/tests
-          kubectl -n telemetry wait --for=condition=complete --timeout=600s job/test-telemetry-server
+          set -x
+          ns="${ns:-telemetry}"
+          cd k8s
+          kubectl -n "${ns}" apply --wait -k manifests/tests
+          kubectl -n telemetry wait \
+            --for=condition=complete \
+            --timeout=300s \
+            job/test-telemetry-server
+
+      - name: Collect logs
+        if: failure()
+        run: |
+          bash k8s/kubectl-dump telemetry
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v3
+        if: ${{ failure() && github.action }}
+        with:
+          name: gha-telemetry-dev-e2e-logs-${{ github.sha }}-${{ matrix.k3s_version }}-${{ github.run_id }}
+          path: |
+            kubectl-dump-*
+          retention-days: 2
