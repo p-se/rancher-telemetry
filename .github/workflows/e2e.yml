@@ -132,7 +132,7 @@ jobs:
         uses: actions/upload-artifact@v3
         if: ${{ failure() && github.action }}
         with:
-          name: gha-telemetry-dev-e2e-logs-${{ github.sha }}-${{ matrix.k3s_version }}-${{ github.run_id }}
+          name: gha-telemetry-dev-e2e-logs-${{ github.sha }}-${{ github.run_id }}
           path: |
             kubectl-dump-*
           retention-days: 2
